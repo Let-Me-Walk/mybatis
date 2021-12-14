@@ -1,0 +1,200 @@
+StudenDao.Interface
+
+package com.ysLearning.dao;
+
+import com.ysLearning.domain.Student;
+import org.apache.ibatis.annotations.Param;
+import vo.QueryParam;
+
+import java.util.List;
+import java.util.Map;
+
+public  interface StudentDao {
+
+   //传入一个简单类型（java基本数据类型+字符串）的参数
+
+    public Student selectStudentById(Integer id);
+    //多个参数，使用@Param{"自定义参数名"}
+    public List<Student> selectMultiParam(@Param("studentName") String name,
+                                          @Param("studentAge") int age) ;
+    //用对象属性值传入参数至sql
+    List<Student> selectMultiObject(QueryParam queryParam);
+
+    //使用Map传参
+    List<Student> selectMultiMap(Map<String,Object> map);
+
+    //使用${}
+    public Student selectUse$(String name);
+
+
+}
+
+===========================================================================================================================================================
+
+StudentDao.XML
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ysLearning.dao.StudentDao">
+
+    <!--
+    parameterType:dao接口中方法参数的数据类型，它的值是java数据类型的全限定名称，或者mybatis规定的数据类型的别名
+    如parameterType="java.lang.Double" 或者paramterType="double"
+    parameterType不是强制性的，mybatis通过反射机制能够发现接口参数的数据类型，所以可以不写，一般都不写
+    -->
+
+<!--1.传入一个简单参数-->
+
+    <delete id="deleteStudent">
+        delete from  student  where id=#{id};
+    </delete>
+
+
+<!--
+2.重要-使用param命名参数方式进行传参至sql
+-->
+    <select id="selectMultiParam" resultType="com.ysLearning.domain.Student">
+        select id,name,email,age from student where name=#{studentName} or age=#{studentAge};
+    </select>
+
+
+    <!--
+    3.重要-传入多个参数至sql语句，使用对象及其属性作为参数实际值
+    使用语法格式：
+    #{paramName,javaType=java.lang.String,jdbcType=VARCHAR}
+    #{paramAge,javaType=java.lang.String,jdbcType=INTEGER}
+    如： select id,name,email from student where name=#{paramName,javaType=java.lang.String,jdbcType=VARCHAR} or
+      age=#{paramAge,javaType=java.lang.String,jdbcType=INTEGER};
+
+    简化语法格式：#{属性名}，javaType，jdbcType的值都有mybatis反射获取；
+    -->
+    <select id="selectMultiObject" resultType="com.ysLearning.domain.Student">
+        select id,name,email from student where name=#{paramName} or
+                                                 age= #{paramAge};
+    </select>
+
+    <!--4.使用参数位置传参，了解。。
+   #{agr0} #{agr1} #{arg2},sql语句中的参数与StudentDao接口中方法的参数位置一致，写哪个位置就传方法中第几个参数
+    -->
+    <select id="selectLocationParam" resultType="com.ysLearning.domain.Student">
+        select id,name,email,age from student where name=#{arg0} or age=#{arg1};
+    </select>
+
+    <!--5.多个参数，map存放多个值,
+    语法:#{map的key}
+    -->
+    <select id="selectMultiMap" resultType="com.ysLearning.domain.Student">
+        select id,name,email,age from student where name=#{myname} or age=#{myage};
+    </select>
+
+    <!--6.${}的sql语句，直接用传入的参数替换${}位置，易造成sql注入-->
+    <select id="selectUse$" resultType="com.ysLearning.domain.Student">
+        select *from student where name=${myname};
+    </select>
+</mapper>
+
+
+===========================================================================================================================================================
+
+TestMethod@Test
+
+package com.ysLearning;
+
+import com.ysLearning.dao.StudentDao;
+import com.ysLearning.domain.Student;
+import com.ysLearning.utils.MybatisUtils;
+import org.apache.ibatis.session.SqlSession;
+import org.junit.Test;
+import vo.QueryParam;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class TestMybatis {
+     @Test
+     //传入一个简单参数，#{id}
+    public void testSingleSelect(){
+         SqlSession sqlSession= MybatisUtils.getSqlSession();
+         StudentDao dao=sqlSession.getMapper(StudentDao.class);
+         Student stu=dao.selectStudentById(1001);
+
+     }
+
+     @Test
+    //多个参数，使用@Param,#{"自定义参数名"}
+    public void selectMultiParam(){
+         SqlSession sqlSession= MybatisUtils.getSqlSession();
+         StudentDao dao=sqlSession.getMapper(StudentDao.class);
+         List<Student> stu=null;
+         stu=dao.selectMultiParam("lkisi",32);
+         for (Student stuu:stu
+              ) {
+             System.out.println(stuu);
+         }
+     }
+
+     @Test
+     //用对象属性值来传参，创建一个包含mapper文件中sql语句#{param}所有属性值的对应对象，再赋值，再传到方法中
+    public void selectMultiObject(){
+         SqlSession sqlSession=MybatisUtils.getSqlSession();
+         StudentDao dao=sqlSession.getMapper(StudentDao.class);
+        QueryParam queryParam=new QueryParam();
+        queryParam.setParamName("zhansan");
+        queryParam.setParamAge(29);
+         List<Student> stu=dao.selectMultiObject(queryParam);
+
+    }
+
+    @Test
+    //使用Map传参，可读性差
+    public void selectMultiMap(){
+        SqlSession sqlSession=MybatisUtils.getSqlSession();
+        StudentDao dao=sqlSession.getMapper(StudentDao.class);
+        Map<String,Object> data=new HashMap<>();
+        data.put("myname","zhangsan");
+        data.put("myage",35);
+
+        List<Student> stu=dao.selectMultiMap(data);
+
+    }
+
+    //$的弊端，直接替换sql语句，容易导致sql注入现象
+
+    public void selectUse$(){
+        SqlSession sqlSession= MybatisUtils.getSqlSession();
+        StudentDao dao=sqlSession.getMapper(StudentDao.class);
+//        List<Student> student= (List<Student>) dao.selectUse$("'lisi'");//连接字符串，必须符合sql语法
+        List<Student> student= (List<Student>) dao.selectUse$("'lisi'；drop table student");//此时发生sql注入，student表被删除
+    }
+}
+
+===========================================================================================================================================================
+
+QueryParam.Class
+
+package vo;
+
+public class QueryParam {
+    private String paramName;
+    private int paramAge;
+
+    public String getParamName() {
+        return paramName;
+    }
+
+    public void setParamName(String paramName) {
+        this.paramName = paramName;
+    }
+
+    public int getParamAge() {
+        return paramAge;
+    }
+
+    public void setParamAge(int paramAge) {
+        this.paramAge = paramAge;
+    }
+}
+
