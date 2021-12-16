@@ -1,3 +1,65 @@
+mtbatis.xml文件：
+
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <!--settings是控制mybatis全局行为的，此处为输出日志功能    -->
+    <settings>
+        <setting name="LogImpl" value="STDOUT_LOGGING"/>
+    </settings>
+    <!-- 数据库连接环境的配置-->
+    <environments default="development">
+        <environment id="development">
+            <!--
+            transactionManager:mybatis提交事务、回滚事务的方式
+            Type：处理事务的类型，选项有JDBC or MANAGED
+            1.JDBC：表示mybatis底层调用的是JDBC中Connection对象处理事务的，包括commit、rollback；
+            2.MANAGED：表示将mybatis事务处理委托给其他的容器（服务器软件、框架等）
+            -->
+            <transactionManager type="JDBC" />
+            <!--
+            dataSource：表示数据源，java体系中，规定实现了javax.sql.DataSource接口的都是数据源
+
+           type：指定数据源的类型；
+                1）POOLED：使用连接池，mybatis会创建PooledDataSource类；
+                2）UNPOOLED：不使用连接池，在每次使用时先创建连接，执行sql，再关闭连接
+                   mybaits会创建一个UnPooledDataSource，管理Connection对象的使用
+                3）JNDI：java命名和目录服务（windows注册表）
+
+             -->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://localhost:3306/ssm" />
+                <property name="username" value="root" />
+                <property name="password" value="password" />
+            </dataSource>
+        </environment>
+    </environments>
+    <!-- 引入SQL映射文件,Mapper映射文件,可写多个mapper标签-->
+
+    <mappers>
+     <!--mapper指定方式1，使用resource，一个包存在多个mapper文件时，需要一一指定   -->
+        <mapper resource="com/ysLearning/dao/StudentDao.xml" />
+        <mapper resource="com/ysLearning/dao/StudentDao2.xml" />
+        <mapper resource="com/ysLearning/dao/StudentDao3.xml" />
+
+
+     <!--mapper指定方式2：使用包名，同一个包下多个mapper文件，只需指定包得位置，mybatis就能全部找到
+         name:xml文件（mapper文件）所在的包名，这个包下的所有xml文件一次性都能加载到mybatis中
+         但使用package标签需要满足两个条件：
+         1）：mapper文件名称需要与对应接口名称完全相同
+         2）：mapper文件需要与对应的接口放在同一个目录下
+     -->
+        <package name="com.ysLearning.dao"/>
+        <package name="com.ysLearning.dao1"/>
+    </mappers>
+</configuration>
+      
+
+StudentDao.XML
+
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
@@ -101,8 +163,28 @@
             #{stu.id}
         </foreach>
     </select>
+
+
+<!--  代码片段：可复用的一段代码，用<sql "id=""">定义，需要用时用<include refid="id">复现代码-->
+    <sql id="studentSql">
+        select *from student
+    </sql>
+
+    <select id="selectReFid" resultType="student">
+        <include refid="studentSql"/>
+        <where>
+            <if test="id!=0">
+
+                <foreach collection="" open="" item="" close="" separator="">
+                #{stuId},
+                </foreach>
+            </if>
+
+
+        </where>
+
+    </select>
 </mapper>
 
-      
       
         
